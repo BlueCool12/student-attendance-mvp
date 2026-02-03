@@ -1,0 +1,12 @@
+{
+    "name": "student-attendance-mvp",
+    "version": "1.0.0",
+    "private": true,
+    "workspaces": [
+        "apps/*"
+    ],
+    "scripts": {
+        "start:backend": "npm run start:dev -w apps/backend",
+        "start:frontend": "npm run dev -w apps/frontend"
+    }
+}

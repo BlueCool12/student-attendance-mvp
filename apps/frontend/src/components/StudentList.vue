@@ -4,7 +4,7 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-gray-100 bg-gray-50/50">
-                        <th class="p-4 font-semibold text-gray-600 text-sm whitespace-nowrap sticky left-0 bg-gray-50/50 w-48">학생 이름</th>
+                        <th class="p-4 font-semibold text-gray-600 text-sm whitespace-nowrap sticky left-0 bg-gray-50/50 w-48">이름</th>
                         <th class="p-4 font-semibold text-gray-600 text-sm text-center">출석률</th>
                         <th class="p-4 font-semibold text-gray-600 text-sm text-center text-green-600">출석</th>
                         <th class="p-4 font-semibold text-gray-600 text-sm text-center text-yellow-600">지각</th>

@@ -23,4 +23,11 @@ export class AttendanceController {
     return this.attendanceService.getSummary(query);
   }
 
+  @Get('logs')
+  getLogs(
+    @Query('studentId') studentId: number,
+    @Query('date') date: string,
+  ) {
+    return this.attendanceService.findLogs(Number(studentId), date);
+  }
 }

@@ -21,28 +21,77 @@
                 <div 
                     v-for="date in dates" 
                     :key="date"
-                    class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                    class="space-y-2"
                 >
-                    <div class="flex flex-col">
-                        <span class="font-semibold text-gray-900">{{ date }}</span>
-                        <span class="text-xs text-gray-400 capitalize">{{ new Date(date).toLocaleDateString('ko-KR', { weekday: 'long' }) }}</span>
+                    <div class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                        <div class="flex flex-col">
+                            <span class="font-semibold text-gray-900">{{ date }}</span>
+                            <span class="text-xs text-gray-400 capitalize">{{ new Date(date).toLocaleDateString('ko-KR', { weekday: 'long' }) }}</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-3">
+                            <button 
+                                @click="toggleHistory(date)"
+                                :class="[
+                                    'p-1.5 rounded-lg transition-colors border',
+                                    selectedHistoryDate === date 
+                                        ? 'bg-indigo-50 border-indigo-200 text-indigo-600' 
+                                        : 'bg-white border-gray-200 text-gray-400 hover:text-indigo-600 hover:border-indigo-100'
+                                ]"
+                                title="이력 보기"
+                            >
+                                <InformationCircleIcon class="w-5 h-5" />
+                            </button>
+
+                            <div class="h-8 w-[1px] bg-gray-100"></div>
+
+                            <div class="flex gap-2">
+                                <button 
+                                    v-for="status in attendanceStatuses"
+                                    :key="status.value"
+                                    @click="handleUpdate(status.value, date)"
+                                    :class="[
+                                        'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
+                                        getStatus(date) === status.value
+                                            ? status.activeClass + ' ring-2 ring-offset-2 ring-' + status.color + '-500'
+                                            : 'bg-gray-100 text-gray-300 hover:bg-gray-200'
+                                    ]"
+                                    :title="status.label"
+                                >
+                                    <component :is="status.icon" class="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="flex gap-2">
-                        <button 
-                            v-for="status in attendanceStatuses"
-                            :key="status.value"
-                            @click="handleUpdate(status.value, date)"
-                            :class="[
-                                'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
-                                getStatus(date) === status.value
-                                    ? status.activeClass + ' ring-2 ring-offset-2 ring-' + status.color + '-500'
-                                    : 'bg-gray-100 text-gray-300 hover:bg-gray-200'
-                            ]"
-                            :title="status.label"
-                        >
-                            <component :is="status.icon" class="w-4 h-4" />
-                        </button>
+
+                    <!-- History Section -->
+                    <div 
+                        v-if="selectedHistoryDate === date"
+                        class="mx-3 p-4 bg-gray-50 rounded-xl border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200"
+                    >
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">상태 변경 이력</h4>
+                        <div v-if="isLogsLoading" class="flex justify-center py-4">
+                            <div class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                        <div v-else-if="historyLogs.length === 0" class="text-center py-4 text-sm text-gray-400">
+                            이력이 없습니다.
+                        </div>
+                        <div v-else class="space-y-3 relative">
+                            <div class="absolute left-1 top-2 bottom-2 w-[1px] bg-gray-200"></div>
+                            <div 
+                                v-for="log in historyLogs" 
+                                :key="log.id"
+                                class="relative pl-6 flex items-center justify-between"
+                            >
+                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-2 border-white shadow-sm" :class="'bg-' + getStatusColorRoot(log.status) + '-500'"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium" :class="'text-' + getStatusColorRoot(log.status) + '-700'">
+                                        {{ getStatusLabel(log.status) }}
+                                    </span>
+                                    <span class="text-[10px] text-gray-400">{{ formatTime(log.createdAt) }}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -54,7 +103,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { XMarkIcon, CheckIcon, ClockIcon } from '@heroicons/vue/24/solid';
+import { XMarkIcon as XMarkSolid, CheckIcon as CheckSolid, ClockIcon as ClockSolid } from '@heroicons/vue/24/solid';
+import { XMarkIcon, CheckIcon, ClockIcon, InformationCircleIcon } from '@heroicons/vue/24/outline';
 import { AttendanceStatus } from '@student-attendance/shared';
 import api from '../services/api';
 
@@ -70,6 +120,9 @@ const emit = defineEmits(['close', 'updated']);
 
 const attendanceRecords = ref([]);
 const isLoading = ref(false);
+const selectedHistoryDate = ref(null);
+const historyLogs = ref([]);
+const isLogsLoading = ref(false);
 
 const fetchAttendance = async () => {
     isLoading.value = true;
@@ -91,10 +144,52 @@ const handleUpdate = async (status, date) => {
             date
         });
         await fetchAttendance();
+        if (selectedHistoryDate.value === date) {
+            await fetchLogs(date);
+        }
         emit('updated');
     } catch (e) {
         alert('출결 기록 실패');
     }
+};
+
+const fetchLogs = async (date) => {
+    isLogsLoading.value = true;
+    try {
+        const res = await api.get(`/attendance/logs?studentId=${props.studentId}&date=${date}`);
+        historyLogs.value = res.data;
+    } catch (e) {
+        console.error(e);
+    } finally {
+        isLogsLoading.value = false;
+    }
+};
+
+const toggleHistory = async (date) => {
+    if (selectedHistoryDate.value === date) {
+        selectedHistoryDate.value = null;
+        historyLogs.value = [];
+    } else {
+        selectedHistoryDate.value = date;
+        await fetchLogs(date);
+    }
+};
+
+const formatTime = (dateStr) => {
+    return new Date(dateStr).toLocaleTimeString('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+};
+
+const getStatusLabel = (status) => {
+    return attendanceStatuses.find(s => s.value === status)?.label || '알 수 없음';
+};
+
+const getStatusColorRoot = (status) => {
+    return attendanceStatuses.find(s => s.value === status)?.color || 'gray';
 };
 
 const attendanceMap = computed(() => {
@@ -106,9 +201,9 @@ const attendanceMap = computed(() => {
 });
 
 const attendanceStatuses = [
-    { value: AttendanceStatus.PRESENT, label: '출석', activeClass: 'bg-green-500 text-white', color: 'green', icon: CheckIcon },
-    { value: AttendanceStatus.LATE, label: '지각', activeClass: 'bg-yellow-500 text-white', color: 'yellow', icon: ClockIcon },
-    { value: AttendanceStatus.ABSENT, label: '결석', activeClass: 'bg-red-500 text-white', color: 'red', icon: XMarkIcon },
+    { value: AttendanceStatus.PRESENT, label: '출석', activeClass: 'bg-green-500 text-white', color: 'green', icon: CheckSolid },
+    { value: AttendanceStatus.LATE, label: '지각', activeClass: 'bg-yellow-500 text-white', color: 'yellow', icon: ClockSolid },
+    { value: AttendanceStatus.ABSENT, label: '결석', activeClass: 'bg-red-500 text-white', color: 'red', icon: XMarkSolid },
 ];
 
 const getStatus = (date) => {

@@ -27,4 +27,8 @@ export class FindStudentsDto {
   @IsInt()
   @Min(1)
   limit?: number = 10;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

@@ -8,6 +8,12 @@
     ],
     "scripts": {
         "start:backend": "npm run start:dev -w apps/backend",
-        "start:frontend": "npm run dev -w apps/frontend"
+        "start:frontend": "npm run dev -w apps/frontend",
+        "start:electron": "npm run dev -w apps/electron",
+        "build:electron": "npm run build -w apps/frontend && npm run build -w apps/electron"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1",
+        "wait-on": "^9.0.3"
     }
 }

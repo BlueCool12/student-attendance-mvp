@@ -3,5 +3,5 @@
 </template>
 
 <script setup>
-// Layout can be added here if needed
+
 </script>

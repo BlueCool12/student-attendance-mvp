@@ -6,7 +6,7 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHashHistory(), // Use Hash Mode for Electron
+    history: createWebHashHistory(),
     routes,
 });
 

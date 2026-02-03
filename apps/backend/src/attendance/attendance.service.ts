@@ -7,6 +7,7 @@ import { AttendanceSummaryDto } from './dto/attendance-summary.dto';
 import { AttendanceStatus } from '@student-attendance/shared';
 import { Attendance } from './entities/attendance.entity';
 import { Student } from '../student/entities/student.entity';
+import { AttendanceLog } from './entities/attendance-log.entity';
 
 @Injectable()
 export class AttendanceService {
@@ -15,6 +16,8 @@ export class AttendanceService {
     private attendanceRepository: Repository<Attendance>,
     @InjectRepository(Student)
     private studentRepository: Repository<Student>,
+    @InjectRepository(AttendanceLog)
+    private attendanceLogRepository: Repository<AttendanceLog>,
   ) { }
 
   async updateRecord(createAttendanceDto: CreateAttendanceDto) {
@@ -24,6 +27,12 @@ export class AttendanceService {
       { studentId, date, status },
       ['studentId', 'date'],
     );
+
+    await this.attendanceLogRepository.save({
+      studentId,
+      date,
+      status,
+    });
 
     return { studentId, date, status };
   }
@@ -57,5 +66,10 @@ export class AttendanceService {
     };
   }
 
-
+  async findLogs(studentId: number, date: string) {
+    return await this.attendanceLogRepository.find({
+      where: { studentId, date },
+      order: { createdAt: 'DESC' },
+    });
+  }
 }

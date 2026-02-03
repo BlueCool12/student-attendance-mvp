@@ -19,6 +19,7 @@
         v-model:filter="currentFilter"
         v-model:startDate="startDate"
         v-model:endDate="endDate"
+        v-model:search="searchQuery"
       />
 
       <StudentList 
@@ -88,6 +89,8 @@ const page = ref(1);
 const limit = ref(10);
 const total = ref(0);
 const summary = ref({ totalStudents: 0, present: 0, late: 0, absent: 0 });
+const searchQuery = ref('');
+let searchTimeout = null;
 
 const fetchStudents = async () => {
     try {
@@ -97,6 +100,9 @@ const fetchStudents = async () => {
         queryParams.append('status', currentFilter.value);
         queryParams.append('page', page.value.toString());
         queryParams.append('limit', limit.value.toString());
+        if (searchQuery.value) {
+            queryParams.append('search', searchQuery.value);
+        }
         
         const res = await api.get(`/student?${queryParams.toString()}`);
         students.value = res.data.data;
@@ -133,6 +139,14 @@ watch(currentFilter, () => {
 
 watch(page, () => {
     fetchStudents();
+});
+
+watch(searchQuery, () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        page.value = 1;
+        fetchStudents();
+    }, 300);
 });
 
 const datesInRange = computed(() => {

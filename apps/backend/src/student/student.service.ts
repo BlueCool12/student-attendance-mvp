@@ -21,8 +21,12 @@ export class StudentService {
   }
 
   async findAll(queryDto: FindStudentsDto) {
-    const { startDate, endDate, status, page = 1, limit = 10 } = queryDto;
+    const { startDate, endDate, status, page = 1, limit = 10, search } = queryDto;
     const query = this.studentRepository.createQueryBuilder('student');
+
+    if (search) {
+      query.andWhere('student.name LIKE :search', { search: `%${search}%` });
+    }
 
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -45,7 +49,7 @@ export class StudentService {
           .where("a.studentId = student.id")
           .andWhere("a.date BETWEEN :startDate AND :endDate")
           .getQuery();
-        return `(${subQuery}) < :passedDaysInRange`;
+        return `${subQuery} < :passedDaysInRange`;
       }).setParameters({ startDate, endDate, passedDaysInRange });
     } else if (status !== AttendanceStatus.ALL) {
       query.andWhere(qb => {
@@ -56,7 +60,7 @@ export class StudentService {
           .andWhere("a.date BETWEEN :startDate AND :endDate")
           .andWhere("a.status = :status")
           .getQuery();
-        return `EXISTS (${subQuery})`;
+        return `EXISTS ${subQuery}`;
       }).setParameters({ startDate, endDate, status });
     }
 

@@ -1,5 +1,5 @@
 import { IsInt, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
-import { AttendanceStatus } from '../entities/attendance.entity';
+import { AttendanceStatus } from '@student-attendance/shared';
 
 export class CreateAttendanceDto {
     @IsInt()

@@ -12,62 +12,110 @@
       </div>
 
       <div class="overflow-y-auto flex-1 pr-2">
-        <table class="w-full text-left border-collapse">
-            <thead class="sticky top-0 bg-white z-10">
-                <tr class="border-b border-gray-100">
-                    <th class="py-3 font-semibold text-gray-600 text-sm">날짜</th>
-                    <th class="py-3 font-semibold text-gray-600 text-sm text-center">상태</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                <tr v-for="date in dates" :key="date" class="hover:bg-gray-50 transition-colors">
-                    <td class="py-3 text-sm text-gray-600">{{ date }}</td>
-                    <td class="py-3 text-center">
-                        <div class="flex justify-center gap-2">
-                            <button 
-                                v-for="status in attendanceStatuses"
-                                :key="status.value"
-                                @click="$emit('update', studentId, status.value, date)"
-                                :class="[
-                                    'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
-                                    getStatus(date) === status.value
-                                        ? status.activeClass + ' ring-2 ring-offset-2 ring-' + status.color + '-500'
-                                        : 'bg-gray-100 text-gray-300 hover:bg-gray-200'
-                                ]"
-                                :title="status.label"
-                            >
-                                <component :is="status.icon" class="w-4 h-4" />
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="p-6">
+            <div v-if="isLoading" class="flex flex-col items-center justify-center py-12">
+                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-sm text-gray-500 mt-4">데이터를 불러오는 중입니다...</p>
+            </div>
+            <div v-else class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <div 
+                    v-for="date in dates" 
+                    :key="date"
+                    class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100"
+                >
+                    <div class="flex flex-col">
+                        <span class="font-semibold text-gray-900">{{ date }}</span>
+                        <span class="text-xs text-gray-400 capitalize">{{ new Date(date).toLocaleDateString('ko-KR', { weekday: 'long' }) }}</span>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button 
+                            v-for="status in attendanceStatuses"
+                            :key="status.value"
+                            @click="handleUpdate(status.value, date)"
+                            :class="[
+                                'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
+                                getStatus(date) === status.value
+                                    ? status.activeClass + ' ring-2 ring-offset-2 ring-' + status.color + '-500'
+                                    : 'bg-gray-100 text-gray-300 hover:bg-gray-200'
+                            ]"
+                            :title="status.label"
+                        >
+                            <component :is="status.icon" class="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed, onMounted, watch } from 'vue';
 import { XMarkIcon, CheckIcon, ClockIcon } from '@heroicons/vue/24/solid';
+import { AttendanceStatus } from '@student-attendance/shared';
+import api from '../services/api';
 
 const props = defineProps({
     studentId: Number,
     studentName: String,
-    dates: Array, // Array of date strings
-    attendanceRecords: Array // All records, need to filter by studentId locally or passed pre-filtered
+    dates: Array, 
+    startDate: String,
+    endDate: String
 });
 
-const emit = defineEmits(['close', 'update']);
+const emit = defineEmits(['close', 'updated']);
+
+const attendanceRecords = ref([]);
+const isLoading = ref(false);
+
+const fetchAttendance = async () => {
+    isLoading.value = true;
+    try {
+        const res = await api.get(`/attendance?studentId=${props.studentId}&startDate=${props.startDate}&endDate=${props.endDate}`);
+        attendanceRecords.value = res.data;
+    } catch (e) {
+        console.error(e);
+    } finally {
+        isLoading.value = false;
+    }
+};
+
+const handleUpdate = async (status, date) => {
+    try {
+        await api.post('/attendance', {
+            studentId: props.studentId,
+            status,
+            date
+        });
+        await fetchAttendance();
+        emit('updated');
+    } catch (e) {
+        alert('출결 기록 실패');
+    }
+};
+
+const attendanceMap = computed(() => {
+    const map = new Map();
+    attendanceRecords.value.forEach(r => {
+        map.set(r.date, r.status);
+    });
+    return map;
+});
 
 const attendanceStatuses = [
-    { value: 1, label: '출석', activeClass: 'bg-green-500 text-white', color: 'green', icon: CheckIcon },
-    { value: 2, label: '지각', activeClass: 'bg-yellow-500 text-white', color: 'yellow', icon: ClockIcon },
-    { value: 3, label: '결석', activeClass: 'bg-red-500 text-white', color: 'red', icon: XMarkIcon },
+    { value: AttendanceStatus.PRESENT, label: '출석', activeClass: 'bg-green-500 text-white', color: 'green', icon: CheckIcon },
+    { value: AttendanceStatus.LATE, label: '지각', activeClass: 'bg-yellow-500 text-white', color: 'yellow', icon: ClockIcon },
+    { value: AttendanceStatus.ABSENT, label: '결석', activeClass: 'bg-red-500 text-white', color: 'red', icon: XMarkIcon },
 ];
 
 const getStatus = (date) => {
-    const record = props.attendanceRecords.find(r => r.studentId === props.studentId && r.date === date);
-    return record ? record.status : 0;
+    return attendanceMap.value.get(date) || AttendanceStatus.ALL;
 };
+
+onMounted(fetchAttendance);
+
+watch([() => props.studentId, () => props.startDate, () => props.endDate], fetchAttendance);
 </script>

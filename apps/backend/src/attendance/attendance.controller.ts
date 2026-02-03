@@ -1,34 +1,26 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
-import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+import { FindAttendanceDto } from './dto/find-attendance.dto';
+import { AttendanceSummaryDto } from './dto/attendance-summary.dto';
 
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) { }
 
   @Post()
-  create(@Body() createAttendanceDto: CreateAttendanceDto) {
-    return this.attendanceService.create(createAttendanceDto);
+  record(@Body() createAttendanceDto: CreateAttendanceDto) {
+    return this.attendanceService.updateRecord(createAttendanceDto);
   }
 
   @Get()
-  findAll(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
-    return this.attendanceService.findAll(startDate, endDate);
+  findAll(@Query() query: FindAttendanceDto) {
+    return this.attendanceService.findAll(query);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.attendanceService.findOne(+id);
+  @Get('summary')
+  getSummary(@Query() query: AttendanceSummaryDto) {
+    return this.attendanceService.getSummary(query);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAttendanceDto: UpdateAttendanceDto) {
-    return this.attendanceService.update(+id, updateAttendanceDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.attendanceService.remove(+id);
-  }
 }

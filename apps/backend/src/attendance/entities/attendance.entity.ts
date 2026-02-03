@@ -1,13 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, JoinColumn, ManyToOne, DeleteDateColumn, Unique } from 'typeorm';
 import { Student } from '../../student/entities/student.entity';
-
-export enum AttendanceStatus {
-    PRESENT = 1,
-    LATE = 2,
-    ABSENT = 3,
-}
+import { AttendanceStatus } from '@student-attendance/shared';
 
 @Entity()
+@Unique(['studentId', 'date'])
 export class Attendance {
     @PrimaryGeneratedColumn()
     id: number;
@@ -22,7 +18,6 @@ export class Attendance {
     @Column({ type: 'int' })
     status: AttendanceStatus;
 
-    // Store the date of attendance (e.g., '2023-10-27') to query by date easily
     @Column({ type: 'date' })
     date: string;
 
@@ -31,4 +26,7 @@ export class Attendance {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @DeleteDateColumn()
+    deletedAt: Date;
 }

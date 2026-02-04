@@ -1,9 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, JoinColumn, ManyToOne, DeleteDateColumn, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, JoinColumn, ManyToOne, DeleteDateColumn, Unique, Index } from 'typeorm';
 import { Student } from '../../student/entities/student.entity';
 import { AttendanceStatus } from '@student-attendance/shared';
 
 @Entity()
 @Unique(['studentId', 'date'])
+@Index(['date', 'status'])
 export class Attendance {
     @PrimaryGeneratedColumn()
     id: number;
@@ -26,6 +27,9 @@ export class Attendance {
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @Column({ type: 'text', nullable: true })
+    memo: string;
 
     @DeleteDateColumn()
     deletedAt: Date;

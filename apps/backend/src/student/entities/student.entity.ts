@@ -6,7 +6,7 @@ export class Student {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ length: 6 })
+    @Column({ length: 10 })
     name: string;
 
     @CreateDateColumn()

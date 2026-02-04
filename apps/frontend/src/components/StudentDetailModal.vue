@@ -31,6 +31,22 @@
                         
                         <div class="flex items-center gap-3">
                             <button 
+                                @click="toggleMemo(date)"
+                                :class="[
+                                    'p-1.5 rounded-lg transition-colors border',
+                                    selectedMemoDate === date 
+                                        ? 'bg-indigo-50 border-indigo-200 text-indigo-600' 
+                                        : getMemo(date)
+                                            ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
+                                            : 'bg-white border-gray-200 text-gray-400 hover:text-indigo-600 hover:border-indigo-100'
+                                ]"
+                                title="메모 작성"
+                            >
+                                <ChatIconSolid v-if="getMemo(date)" class="w-5 h-5" />
+                                <ChatBubbleBottomCenterTextIcon v-else class="w-5 h-5" />
+                            </button>
+
+                            <button 
                                 @click="toggleHistory(date)"
                                 :class="[
                                     'p-1.5 rounded-lg transition-colors border',
@@ -62,6 +78,23 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Memo Section -->
+                    <div 
+                        v-if="selectedMemoDate === date"
+                        class="mx-3 p-4 bg-amber-50 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2 duration-200"
+                    >
+                        <h4 class="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <ChatIconSolid class="w-3 h-3" />
+                            메모
+                        </h4>
+                        <textarea 
+                            :value="getMemo(date)"
+                            @change="e => handleMemoUpdate(date, e.target.value)"
+                            placeholder="메모를 입력하세요..."
+                            class="w-full h-20 bg-white border border-amber-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none placeholder-amber-300"
+                        ></textarea>
                     </div>
 
                     <!-- History Section -->
@@ -103,8 +136,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { XMarkIcon as XMarkSolid, CheckIcon as CheckSolid, ClockIcon as ClockSolid } from '@heroicons/vue/24/solid';
-import { XMarkIcon, CheckIcon, ClockIcon, InformationCircleIcon } from '@heroicons/vue/24/outline';
+import { XMarkIcon as XMarkSolid, CheckIcon as CheckSolid, ClockIcon as ClockSolid, ChatBubbleBottomCenterTextIcon as ChatIconSolid } from '@heroicons/vue/24/solid';
+import { XMarkIcon, CheckIcon, ClockIcon, InformationCircleIcon, ChatBubbleBottomCenterTextIcon } from '@heroicons/vue/24/outline';
 import { AttendanceStatus } from '@student-attendance/shared';
 import api from '../services/api';
 
@@ -121,6 +154,7 @@ const emit = defineEmits(['close', 'updated']);
 const attendanceRecords = ref([]);
 const isLoading = ref(false);
 const selectedHistoryDate = ref(null);
+const selectedMemoDate = ref(null);
 const historyLogs = ref([]);
 const isLogsLoading = ref(false);
 
@@ -137,11 +171,13 @@ const fetchAttendance = async () => {
 };
 
 const handleUpdate = async (status, date) => {
+    if (status === getStatus(date)) return;
     try {
         await api.post('/attendance', {
             studentId: props.studentId,
             status,
-            date
+            date,
+            memo: getMemo(date)
         });
         await fetchAttendance();
         if (selectedHistoryDate.value === date) {
@@ -149,7 +185,22 @@ const handleUpdate = async (status, date) => {
         }
         emit('updated');
     } catch (e) {
-        alert('출결 기록 실패');
+        emit('error', '출결 기록 실패');
+    }
+};
+
+const handleMemoUpdate = async (date, memo) => {
+    try {
+        await api.post('/attendance', {
+            studentId: props.studentId,
+            status: getStatus(date),
+            date,
+            memo
+        });
+        await fetchAttendance();
+        emit('updated');
+    } catch (e) {
+        console.error(e);
     }
 };
 
@@ -166,12 +217,22 @@ const fetchLogs = async (date) => {
 };
 
 const toggleHistory = async (date) => {
+    selectedMemoDate.value = null;
     if (selectedHistoryDate.value === date) {
         selectedHistoryDate.value = null;
         historyLogs.value = [];
     } else {
         selectedHistoryDate.value = date;
         await fetchLogs(date);
+    }
+};
+
+const toggleMemo = (date) => {
+    selectedHistoryDate.value = null;
+    if (selectedMemoDate.value === date) {
+        selectedMemoDate.value = null;
+    } else {
+        selectedMemoDate.value = date;
     }
 };
 
@@ -185,7 +246,7 @@ const formatTime = (dateStr) => {
 };
 
 const getStatusLabel = (status) => {
-    return attendanceStatuses.find(s => s.value === status)?.label || '알 수 없음';
+    return attendanceStatuses.find(s => s.value === status)?.label || '미기록';
 };
 
 const getStatusColorRoot = (status) => {
@@ -195,7 +256,7 @@ const getStatusColorRoot = (status) => {
 const attendanceMap = computed(() => {
     const map = new Map();
     attendanceRecords.value.forEach(r => {
-        map.set(r.date, r.status);
+        map.set(r.date, { status: r.status, memo: r.memo });
     });
     return map;
 });
@@ -207,7 +268,11 @@ const attendanceStatuses = [
 ];
 
 const getStatus = (date) => {
-    return attendanceMap.value.get(date) || AttendanceStatus.ALL;
+    return attendanceMap.value.get(date)?.status || AttendanceStatus.UNRECORDED;
+};
+
+const getMemo = (date) => {
+    return attendanceMap.value.get(date)?.memo || '';
 };
 
 onMounted(fetchAttendance);

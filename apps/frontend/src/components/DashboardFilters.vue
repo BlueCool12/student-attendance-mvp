@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="bg-white overflow-hidden">
     <!-- Top Tier: Global Filters (Search & Date Range) -->
     <div class="p-4 md:p-6 flex flex-wrap items-center gap-6 justify-between border-b border-gray-100/50">
       <!-- Search Section -->
@@ -8,7 +8,7 @@
           type="text" 
           :value="search" 
           @input="$emit('update:search', $event.target.value)"
-          placeholder="학생 이름 검색..."
+          placeholder="학생 이름 검색"
           class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
         >
         <div class="absolute left-3.5 top-2.5 text-gray-400">
@@ -29,8 +29,8 @@
         <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-gray-200 shadow-sm overflow-hidden flex-1 lg:flex-none justify-between lg:justify-start">
           <!-- Start Date -->
           <div class="relative flex-1 sm:flex-none flex items-center justify-center min-w-[70px]">
-            <span class="text-sm text-gray-600 font-medium">
-              {{ formatDateDisplay(startDate) }}
+            <span class="text-sm font-medium" :class="startDate ? 'text-gray-600' : 'text-gray-400'">
+              {{ formatDateDisplay(startDate) || 'YY.MM.DD' }}
             </span>
             <input 
               type="date" 
@@ -47,15 +47,15 @@
 
           <!-- End Date -->
           <div class="relative flex-1 sm:flex-none flex items-center justify-center min-w-[70px]">
-            <span class="text-sm text-gray-600 font-medium">
-              {{ formatDateDisplay(endDate) }}
+            <span class="text-sm font-medium" :class="endDate ? 'text-gray-600' : 'text-gray-400'">
+              {{ formatDateDisplay(endDate) || formatDateDisplay(startDate) }}
             </span>
             <input 
               type="date" 
               :value="endDate" 
               @input="handleDateInput($event, 'endDate')"
-              @click="$event.target.showPicker()"
-              required 
+              @click="$event.target.showPicker()"              
+              :min="startDate"
               :max="today"
               class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             >
@@ -64,21 +64,37 @@
       </div>
     </div>
 
-    <!-- Bottom Tier: Category Filters (Status Chips) -->
-    <div class="px-4 md:px-6 py-3 bg-gray-50/50 flex gap-2 items-center overflow-x-auto no-scrollbar">                      
-      <button 
-        v-for="status in filters" 
-        :key="status.value"
-        @click="$emit('update:filter', status.value)"
-        :class="[
-          'px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap border',
-          filter === status.value 
-            ? 'bg-gray-900 text-white border-gray-900 shadow-sm' 
-            : 'bg-white text-gray-600 border-gray-100 hover:bg-gray-50 hover:border-gray-200'
-        ]"
-      >
-        {{ status.label }}
-      </button>
+    <!-- Bottom Tier: Category Filters (Status Chips) & Limit -->
+    <div class="px-4 md:px-6 py-3 bg-gray-50/50 flex flex-wrap items-center justify-between gap-4 border-b border-gray-100/50">                      
+      <div class="flex gap-2 items-center overflow-x-auto no-scrollbar">
+        <button 
+          v-for="status in filters" 
+          :key="status.value"
+          @click="$emit('update:filter', status.value)"
+          :class="[
+            'px-4 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap border',
+            filter === status.value 
+              ? 'bg-gray-900 text-white border-gray-900 shadow-sm' 
+              : 'bg-white text-gray-600 border-gray-100 hover:bg-gray-50 hover:border-gray-200'
+          ]"
+        >
+          {{ status.label }}
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2">
+          <span class="text-xs text-gray-400 font-medium">표시 개수:</span>
+          <select 
+              :value="limit" 
+              @change="$emit('update:limit', Number($event.target.value))"
+              class="text-xs border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-1 bg-white"
+          >
+              <option :value="10">10명</option>
+              <option :value="20">20명</option>
+              <option :value="50">50명</option>
+              <option :value="100">100명</option>
+          </select>
+      </div>
     </div>
   </div>
 </template>
@@ -102,10 +118,14 @@ const props = defineProps({
   search: {
     type: String,
     default: ''
+  },
+  limit: {
+    type: Number,
+    default: 10
   }
 });
 
-const emit = defineEmits(['update:filter', 'update:startDate', 'update:endDate', 'update:search']);
+const emit = defineEmits(['update:filter', 'update:startDate', 'update:endDate', 'update:search', 'update:limit']);
 
 const filters = [
   { label: '전체', value: AttendanceStatus.ALL },
@@ -119,10 +139,27 @@ const today = new Date().toISOString().split('T')[0];
 
 const handleDateInput = (e, type) => {
   const val = e.target.value;
-  if (!val) {    
-    e.target.value = props[type];
+  
+  if (type === 'startDate' && !val) {
+    e.target.value = props.startDate;
     return;
   }
+  
+  if (type === 'endDate' && !val) {
+    emit(`update:${type}`, val);
+    return;
+  }
+
+  if (type === 'startDate' && props.endDate && val > props.endDate) {
+    emit('update:endDate', val);
+  }
+  
+  if (type === 'endDate' && val < props.startDate) {
+    e.target.value = props.startDate; 
+    emit('update:endDate', props.startDate);
+    return;
+  }
+
   emit(`update:${type}`, val);
 };
 

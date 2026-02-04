@@ -1,4 +1,4 @@
-import { IsInt, IsEnum, IsDateString, IsNotEmpty } from 'class-validator';
+import { IsInt, IsEnum, IsISO8601, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AttendanceStatus } from '@student-attendance/shared';
 
 export class CreateAttendanceDto {
@@ -10,7 +10,11 @@ export class CreateAttendanceDto {
     @IsNotEmpty()
     status: AttendanceStatus;
 
-    @IsDateString()
+    @IsISO8601()
     @IsNotEmpty()
     date: string;
+
+    @IsOptional()
+    @IsString()
+    memo?: string;
 }

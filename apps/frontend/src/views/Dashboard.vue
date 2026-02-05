@@ -15,6 +15,13 @@
             <span>엑셀 다운로드</span>
           </button>
           <button 
+            @click="openBulkUploadModal"
+            class="flex items-center gap-2 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 px-6 py-3 rounded-2xl font-bold shadow-sm transition-all active:scale-95"
+          >
+            <ArrowUpTrayIcon class="w-5 h-5" />
+            <span>일괄 등록</span>
+          </button>
+          <button 
             @click="openAddModal"
             class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
           >
@@ -71,6 +78,13 @@
         @error="handleModalError"
       />
 
+      <BulkUploadModal 
+        v-if="showBulkUploadModal"
+        @close="closeBulkUploadModal"
+        @uploaded="onBulkUploaded"
+        @error="handleModalError"
+      />
+
     <StudentDetailModal 
         v-if="selectedStudent" 
         :studentId="selectedStudent.id" 
@@ -102,13 +116,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { AttendanceStatus } from '@student-attendance/shared';
 import api from '../services/api';
 import StudentModal from '../components/StudentModal.vue';
+import BulkUploadModal from '../components/BulkUploadModal.vue';
 import StudentList from '../components/StudentList.vue';
 import StudentDetailModal from '../components/StudentDetailModal.vue';
 import DashboardStats from '../components/DashboardStats.vue';
 import DashboardFilters from '../components/DashboardFilters.vue';
 import BulkActionBar from '../components/BulkActionBar.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
-import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/solid';
+import { PlusIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/solid';
 import * as XLSX from 'xlsx';
 
 const route = useRoute();
@@ -117,6 +132,7 @@ const router = useRouter();
 const students = ref([]);
 const selectedStudent = ref(null);
 const editingTarget = ref(undefined);
+const showBulkUploadModal = ref(false);
 const total = ref(0);
 
 const currentFilter = ref(Number(route.query.status) || AttendanceStatus.ALL);
@@ -372,6 +388,24 @@ const openEditModal = (student) => {
 
 const closeStudentModal = () => {
     editingTarget.value = undefined;
+};
+
+const openBulkUploadModal = () => {
+    showBulkUploadModal.value = true;
+};
+
+const closeBulkUploadModal = () => {
+    showBulkUploadModal.value = false;
+};
+
+const onBulkUploaded = () => {
+    showConfirm({
+        title: '완료',
+        message: '학생들이 성공적으로 등록되었습니다.',
+        isAlert: true
+    });
+    fetchStudents(true);
+    fetchSummary();
 };
 
 const onAttendanceUpdated = () => {

@@ -18,6 +18,11 @@ export class StudentRepository {
     return await this.repository.save(student);
   }
 
+  async bulkCreate(data: DeepPartial<Student>[]) {
+    const students = this.repository.create(data);
+    return await this.repository.save(students);
+  }
+
   async findAndCountWithStats(queryDto: FindStudentsDto, passedDaysInRange: number) {
     const { startDate, endDate, status, page, limit, search } = queryDto;
 

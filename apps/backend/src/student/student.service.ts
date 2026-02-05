@@ -17,6 +17,10 @@ export class StudentService {
     return await this.studentRepository.create(createStudentDto);
   }
 
+  async bulkCreate(createStudentDtos: CreateStudentDto[]) {
+    return await this.studentRepository.bulkCreate(createStudentDtos);
+  }
+
   async findAll(queryDto: FindStudentsDto) {
     const { startDate, endDate, limit, page } = queryDto;
     const passedDaysInRange = calculatePassedDays(startDate, endDate);

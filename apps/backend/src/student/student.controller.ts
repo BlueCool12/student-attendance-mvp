@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { StudentService } from './student.service';
 import { CreateStudentDto } from './dto/create-student.dto';
+import { BulkCreateStudentDto } from './dto/bulk-create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { FindStudentsDto } from './dto/find-students.dto';
 
@@ -11,6 +12,11 @@ export class StudentController {
   @Post()
   create(@Body() createStudentDto: CreateStudentDto) {
     return this.studentService.create(createStudentDto);
+  }
+
+  @Post('bulk')
+  bulkCreate(@Body() bulkCreateStudentDto: BulkCreateStudentDto) {
+    return this.studentService.bulkCreate(bulkCreateStudentDto.students);
   }
 
   @Get()

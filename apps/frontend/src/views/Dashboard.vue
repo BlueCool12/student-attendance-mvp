@@ -211,8 +211,8 @@ const selectedIds = ref(new Set());
 const isLoading = ref(false);
 let searchTimeout = null;
 
-const fetchStudents = async () => {
-    isLoading.value = true;
+const fetchStudents = async (silent = false) => {
+    if (!silent) isLoading.value = true;
     try {
         const queryParams = new URLSearchParams();
         queryParams.append('startDate', startDate.value);
@@ -236,7 +236,7 @@ const fetchStudents = async () => {
             isAlert: true
         });
     } finally {
-        isLoading.value = false;
+        if (!silent) isLoading.value = false;
     }
 };
 
@@ -328,7 +328,7 @@ const handleBulkUpdate = async (status) => {
                 });
                 
                 selectedIds.value.clear();
-                fetchStudents();
+                fetchStudents(true);
                 fetchSummary();
             } catch (error) {
                 console.error('Bulk update failed:', error);
@@ -376,7 +376,7 @@ const closeStudentModal = () => {
 
 const onAttendanceUpdated = () => {
     fetchSummary();        
-    fetchStudents();
+    fetchStudents(true);
 };
 
 const deleteStudent = async (id) => {

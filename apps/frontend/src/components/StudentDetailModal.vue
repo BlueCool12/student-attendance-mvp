@@ -158,15 +158,15 @@ const selectedMemoDate = ref(null);
 const historyLogs = ref([]);
 const isLogsLoading = ref(false);
 
-const fetchAttendance = async () => {
-    isLoading.value = true;
+const fetchAttendance = async (silent = false) => {
+    if (!silent) isLoading.value = true;
     try {
         const res = await api.get(`/attendance?studentId=${props.studentId}&startDate=${props.startDate}&endDate=${props.endDate}`);
         attendanceRecords.value = res.data;
     } catch (e) {
         console.error(e);
     } finally {
-        isLoading.value = false;
+        if (!silent) isLoading.value = false;
     }
 };
 
@@ -179,7 +179,7 @@ const handleUpdate = async (status, date) => {
             date,
             memo: getMemo(date)
         });
-        await fetchAttendance();
+        await fetchAttendance(true);
         if (selectedHistoryDate.value === date) {
             await fetchLogs(date);
         }
@@ -197,7 +197,7 @@ const handleMemoUpdate = async (date, memo) => {
             date,
             memo
         });
-        await fetchAttendance();
+        await fetchAttendance(true);
         emit('updated');
     } catch (e) {
         console.error(e);

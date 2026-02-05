@@ -6,13 +6,22 @@
           <h1 class="text-3xl font-bold text-gray-900 tracking-tight">학생 출결 관리</h1>
           <p class="text-gray-500 mt-2">기간 내 출결 현황을 한눈에 확인하세요.</p>
         </div>
-        <button 
-          @click="openAddModal"
-          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
-        >
-          <PlusIcon class="w-5 h-5" />
-          <span>학생 등록</span>
-        </button>
+        <div class="flex gap-3">
+          <button 
+            @click="exportToExcel"
+            class="flex items-center gap-2 bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 px-6 py-3 rounded-2xl font-bold shadow-sm transition-all active:scale-95"
+          >
+            <ArrowDownTrayIcon class="w-5 h-5" />
+            <span>엑셀 다운로드</span>
+          </button>
+          <button 
+            @click="openAddModal"
+            class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
+          >
+            <PlusIcon class="w-5 h-5" />
+            <span>학생 등록</span>
+          </button>
+        </div>
       </header>
       
       <DashboardStats 
@@ -35,6 +44,7 @@
           :students="students"
           :total="total"
           :limit="limit"
+          :loading="isLoading"
           v-model:page="page"
           v-model:selectedIds="selectedIds"
           @openDetail="openDetailModal"
@@ -98,7 +108,8 @@ import DashboardStats from '../components/DashboardStats.vue';
 import DashboardFilters from '../components/DashboardFilters.vue';
 import BulkActionBar from '../components/BulkActionBar.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
-import { PlusIcon } from '@heroicons/vue/24/solid';
+import { PlusIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/solid';
+import * as XLSX from 'xlsx';
 
 const route = useRoute();
 const router = useRouter();
@@ -113,6 +124,46 @@ const page = ref(Number(route.query.page) || 1);
 const limit = ref(Number(route.query.limit) || 10);
 const startDate = ref(route.query.startDate || new Date().toISOString().split('T')[0]);
 const endDate = ref(route.query.endDate || new Date().toISOString().split('T')[0]);
+
+const exportToExcel = () => {
+    if (students.value.length === 0) {
+        showConfirm({
+            title: '알림',
+            message: '내보낼 데이터가 없습니다.',
+            isAlert: true
+        });
+        return;
+    }
+    
+    const exportData = students.value.map(s => ({
+        '이름': s.name,
+        '출석률': `${s.stats?.rate || 0}%`,
+        '출석': s.stats?.present || 0,
+        '지각': s.stats?.late || 0,
+        '결석': s.stats?.absent || 0,
+        '등록일': s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    const wscols = [
+        { wch: 15 }, // 이름
+        { wch: 10 }, // 출석률
+        { wch: 10 }, // 출석
+        { wch: 10 }, // 지각
+        { wch: 10 }, // 결석
+        { wch: 20 }, // 등록일
+    ];
+    ws['!cols'] = wscols;
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "출석현황");
+    
+    const dateInfo = startDate.value === endDate.value 
+        ? startDate.value 
+        : `${startDate.value}_${endDate.value}`;
+    XLSX.writeFile(wb, `출석현황_${dateInfo}.xlsx`);
+};
 
 const confirmModal = ref({
     show: false,
@@ -157,9 +208,11 @@ const handleModalError = (message) => {
 const summary = ref({ totalStudents: 0, present: 0, late: 0, absent: 0 });
 const searchQuery = ref(route.query.search || '');
 const selectedIds = ref(new Set());
+const isLoading = ref(false);
 let searchTimeout = null;
 
 const fetchStudents = async () => {
+    isLoading.value = true;
     try {
         const queryParams = new URLSearchParams();
         queryParams.append('startDate', startDate.value);
@@ -176,6 +229,14 @@ const fetchStudents = async () => {
         total.value = res.data.total;
     } catch (e) {
         console.error(e);
+        showConfirm({
+            title: '오류',
+            message: '데이터를 불러오는데 실패했습니다.',
+            type: 'danger',
+            isAlert: true
+        });
+    } finally {
+        isLoading.value = false;
     }
 };
 
@@ -184,7 +245,13 @@ const fetchSummary = async () => {
         const res = await api.get(`/attendance/summary?startDate=${startDate.value}&endDate=${endDate.value}`);
         summary.value = res.data;
     } catch (e) {
-        console.error(e);
+        console.error(e);        
+        showConfirm({
+            title: '오류',
+            message: '요약 정보를 불러오는데 실패했습니다.',
+            type: 'danger',
+            isAlert: true
+        });
     }
 };
 

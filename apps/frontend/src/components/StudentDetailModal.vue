@@ -4,7 +4,7 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <h3 class="text-xl font-bold text-gray-900">{{ studentName }}</h3>
-          <p class="text-sm text-gray-500">출석 상세 내역</p>
+          <p class="text-sm text-gray-500">출결 상세 내역</p>
         </div>
         <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 transition-colors">
             <XMarkIcon class="w-6 h-6" />
@@ -102,7 +102,7 @@
                         v-if="selectedHistoryDate === date"
                         class="mx-3 p-4 bg-gray-50 rounded-xl border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200"
                     >
-                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">상태 변경 이력</h4>
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">출결 변경 이력</h4>
                         <div v-if="isLogsLoading" class="flex justify-center py-4">
                             <div class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                         </div>

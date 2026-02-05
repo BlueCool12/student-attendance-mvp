@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { Attendance } from './entities/attendance.entity';
 import { FindAttendanceDto } from './dto/find-attendance.dto';
 import { AttendanceSummaryDto } from './dto/attendance-summary.dto';
@@ -13,8 +13,9 @@ export class AttendanceRepository {
     private readonly repository: Repository<Attendance>,
   ) { }
 
-  async findOne(studentId: number, date: string) {
-    return await this.repository.findOne({
+  async findOne(studentId: number, date: string, manager?: EntityManager) {
+    const repo = manager ? manager.getRepository(Attendance) : this.repository;
+    return await repo.findOne({
       where: { studentId, date }
     });
   }
@@ -43,7 +44,8 @@ export class AttendanceRepository {
       .getRawOne();
   }
 
-  async upsert(data: Partial<Attendance>) {
-    return await this.repository.upsert(data, ['studentId', 'date']);
+  async upsert(data: Partial<Attendance>, manager?: EntityManager) {
+    const repo = manager ? manager.getRepository(Attendance) : this.repository;
+    return await repo.upsert(data, ['studentId', 'date']);
   }
 }

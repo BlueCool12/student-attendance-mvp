@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DataSource, EntityManager } from 'typeorm';
 import { AttendanceRepository } from './attendance.repository';
 import { AttendanceLogRepository } from './attendance-log.repository';
 import { StudentRepository } from '../student/student.repository';
@@ -16,6 +17,7 @@ export class AttendanceService {
     private readonly attendanceRepository: AttendanceRepository,
     private readonly attendanceLogRepository: AttendanceLogRepository,
     private readonly studentRepository: StudentRepository,
+    private readonly dataSource: DataSource,
   ) { }
 
   async findAll(queryDto: FindAttendanceDto) {
@@ -40,33 +42,43 @@ export class AttendanceService {
   }
 
   async upsert(createAttendanceDto: CreateAttendanceDto) {
-    const { studentId, date, status, memo } = createAttendanceDto;
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      const { studentId, date, status, memo } = createAttendanceDto;
 
-    const existing = await this.attendanceRepository.findOne(studentId, date);
-    const isUpdated = (!existing || existing.status !== status) && status !== AttendanceStatus.UNRECORDED;
-    const memoToSave = memo !== undefined ? memo : existing?.memo;
+      const existing = await this.attendanceRepository.findOne(studentId, date, manager);
+      const isUpdated = (!existing || existing.status !== status) && status !== AttendanceStatus.UNRECORDED;
+      const memoToSave = memo !== undefined ? memo : existing?.memo;
 
-    await this.attendanceRepository.upsert({ studentId, date, status, memo: memoToSave });
+      await this.attendanceRepository.upsert({ studentId, date, status, memo: memoToSave }, manager);
 
-    if (isUpdated) {
-      await this.attendanceLogRepository.createLog({ studentId, date, status });
-    }
+      if (isUpdated) {
+        await this.attendanceLogRepository.createLog({ studentId, date, status }, manager);
+      }
 
-    return { studentId, date, status, memo: memoToSave };
+      return { studentId, date, status, memo: memoToSave };
+    });
   }
 
   async bulkUpdate(bulkDto: CreateBulkAttendanceDto) {
-    const { studentIds, startDate, endDate, status } = bulkDto;
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      const { studentIds, startDate, endDate, status } = bulkDto;
+      const dates = getDatesInRange(startDate, endDate || startDate);
 
-    const dates = getDatesInRange(startDate, endDate || startDate);
+      const results: { studentId: number; date: string; status: AttendanceStatus }[] = [];
+      for (const studentId of studentIds) {
+        for (const date of dates) {
+          const existing = await this.attendanceRepository.findOne(studentId, date, manager);
+          const isUpdated = (!existing || existing.status !== status) && status !== AttendanceStatus.UNRECORDED;
 
-    const targets: Promise<{ studentId: number; date: string; status: AttendanceStatus; memo?: string }>[] = [];
-    for (const studentId of studentIds) {
-      for (const date of dates) {
-        targets.push(this.upsert({ studentId, date, status }));
+          await this.attendanceRepository.upsert({ studentId, date, status }, manager);
+
+          if (isUpdated) {
+            await this.attendanceLogRepository.createLog({ studentId, date, status }, manager);
+          }
+          results.push({ studentId, date, status });
+        }
       }
-    }
-
-    return await Promise.all(targets);
+      return results;
+    });
   }
 }

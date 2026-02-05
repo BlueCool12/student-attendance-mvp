@@ -46,6 +46,7 @@
                   type === 'danger' ? 'bg-red-600 hover:bg-red-700 shadow-red-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'
                 ]"
                 id="confirm-modal-ok"
+                ref="confirmButtonRef"
               >
                 {{ confirmText }}
               </button>
@@ -59,7 +60,7 @@
 
 <script setup>
 import { ExclamationTriangleIcon, QuestionMarkCircleIcon } from '@heroicons/vue/24/outline';
-import { onMounted, onUnmounted } from 'vue';
+import { watch, nextTick, ref } from 'vue';
 
 const props = defineProps({
   show: Boolean,
@@ -91,20 +92,16 @@ const props = defineProps({
 
 const emit = defineEmits(['confirm', 'cancel']);
 
+const confirmButtonRef = ref(null);
+
 const handleConfirm = () => emit('confirm');
 const handleCancel = () => emit('cancel');
 
-const handleKeydown = (e) => {
-  if (!props.show) return;
-  if (e.key === 'Escape') handleCancel();
-  if (e.key === 'Enter') handleConfirm();
-};
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    nextTick(() => {
+        confirmButtonRef.value?.focus();
+    });
+  }
 });
 </script>

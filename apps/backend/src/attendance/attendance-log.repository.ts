@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { AttendanceLog } from './entities/attendance-log.entity';
 import { AttendanceStatus } from '@student-attendance/shared';
 
@@ -11,8 +11,9 @@ export class AttendanceLogRepository {
     private readonly repository: Repository<AttendanceLog>,
   ) { }
 
-  async createLog(params: { studentId: number; date: string; status: AttendanceStatus }) {
-    return await this.repository.save(params);
+  async createLog(params: { studentId: number; date: string; status: AttendanceStatus }, manager?: EntityManager) {
+    const repo = manager ? manager.getRepository(AttendanceLog) : this.repository;
+    return await repo.save(params);
   }
 
   async findByStudentAndDate(studentId: number, date: string) {

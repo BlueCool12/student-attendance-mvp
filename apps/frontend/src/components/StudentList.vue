@@ -1,5 +1,12 @@
 <template>
-    <div class="bg-white overflow-hidden">        
+    <div class="bg-white overflow-hidden relative min-h-[400px]">
+        <div v-if="loading" class="absolute inset-0 bg-white/80 z-10 flex items-center justify-center backdrop-blur-sm">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <span class="text-indigo-600 font-bold animate-pulse">데이터를 불러오는 중...</span>
+            </div>
+        </div>
+        
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
@@ -149,6 +156,10 @@ const props = defineProps({
     selectedIds: {
         type: Object,
         required: true
+    },
+    loading: {
+        type: Boolean,
+        default: false
     }
 });
 

@@ -83,7 +83,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-          <span class="text-xs text-gray-400 font-medium">표시 개수:</span>
+          <span class="text-xs text-gray-400 font-medium">페이지당 보기:</span>
           <select 
               :value="limit" 
               @change="$emit('update:limit', Number($event.target.value))"
